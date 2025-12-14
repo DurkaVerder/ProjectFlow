@@ -81,6 +81,46 @@ services:
       timeout: 5s
       retries: 5
 
+  # PostgreSQL для analytics
+  postgres_analytics:
+    image: postgres:15
+    container_name: postgres_analytics
+    environment:
+      POSTGRES_DB: analytics_db
+      POSTGRES_USER: analytics_user
+      POSTGRES_PASSWORD: analytics_password
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_analytics_data:/var/lib/postgresql/data
+    networks:
+      - projectflow_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analytics_user -d analytics_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL для integrations
+  postgres_integrations:
+    image: postgres:15
+    container_name: postgres_integrations
+    environment:
+      POSTGRES_DB: integrations_db
+      POSTGRES_USER: integrations_user
+      POSTGRES_PASSWORD: integrations_password
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_integrations_data:/var/lib/postgresql/data
+    networks:
+      - projectflow_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U integrations_user -d integrations_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Zookeeper for Kafka
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
@@ -195,11 +235,55 @@ services:
       - projectflow_network
     restart: on-failure:5
 
+  # Analytics service
+  analytics:
+    build:
+      context: ./analytics
+      dockerfile: Dockerfile
+    container_name: analytics_service
+    ports:
+      - "8004:8004"
+    env_file:
+      - ./analytics/.env
+    depends_on:
+      postgres_analytics:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    networks:
+      - projectflow_network
+    restart: on-failure:5
+
+  # Integrations service
+  integrations:
+    build:
+      context: ./integrations
+      dockerfile: Dockerfile
+    container_name: integrations_service
+    ports:
+      - "8005:8005"
+    env_file:
+      - ./integrations/.env
+    depends_on:
+      postgres_integrations:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    networks:
+      - projectflow_network
+    restart: on-failure:5
+
 volumes:
   postgres_auth_data:
   postgres_projects_data:
   postgres_tasks_data:
   postgres_notifications_data:
+  postgres_analytics_data:
+  postgres_integrations_data:
 
 networks:
   projectflow_network:
