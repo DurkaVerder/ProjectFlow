@@ -4,16 +4,26 @@ from sqlalchemy.orm import Session
 from typing import List
 import uuid
 import httpx
+from contextlib import asynccontextmanager
 
 from database import get_db, engine, Base
 from schemas import ProjectCreate, ProjectUpdate, ProjectResponse, ProjectMemberAdd, ProjectMemberResponse
 from models import Project, ProjectMember
 from auth_utils import get_current_user
 from config import settings
+from kafka_producer import kafka_producer
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Projects Service")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await kafka_producer.start()
+    yield
+    # Shutdown
+    await kafka_producer.stop()
+
+app = FastAPI(title="Projects Service", lifespan=lifespan)
 security = HTTPBearer()
 
 
@@ -32,6 +42,14 @@ async def create_project(
     db.add(db_project)
     db.commit()
     db.refresh(db_project)
+    
+    # Отправляем событие в Kafka
+    await kafka_producer.send_event('projects-events', {
+        'event_type': 'project_created',
+        'project_id': str(db_project.id),
+        'project_name': db_project.name,
+        'owner_id': str(db_project.ownerId)
+    })
     
     return ProjectResponse(
         id=str(db_project.id),
@@ -190,6 +208,14 @@ async def add_project_member(
     db.commit()
     db.refresh(db_member)
     
+    # Отправляем событие в Kafka
+    await kafka_producer.send_event('projects-events', {
+        'event_type': 'member_added',
+        'project_id': project_id,
+        'project_name': project.name,
+        'user_id': member.userId
+    })
+    
     return ProjectMemberResponse(
         id=str(db_member.id),
         projectId=str(db_member.projectId),
@@ -274,6 +300,14 @@ async def remove_project_member(
     
     db.delete(member)
     db.commit()
+    
+    # Отправляем событие в Kafka
+    await kafka_producer.send_event('projects-events', {
+        'event_type': 'member_removed',
+        'project_id': project_id,
+        'project_name': project.name,
+        'user_id': user_id
+    })
     
     return {"message": "Member removed successfully"}
 

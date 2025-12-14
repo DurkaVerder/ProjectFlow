@@ -3,15 +3,25 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
+from contextlib import asynccontextmanager
 
 from database import get_db, engine, Base
 from schemas import TaskCreate, TaskUpdate, TaskResponse, TaskCommentCreate, TaskCommentResponse
 from models import Task, TaskComment
 from auth_utils import get_current_user
+from kafka_producer import kafka_producer
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Tasks Service")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await kafka_producer.start()
+    yield
+    # Shutdown
+    await kafka_producer.stop()
+
+app = FastAPI(title="Tasks Service", lifespan=lifespan)
 security = HTTPBearer()
 
 
@@ -35,6 +45,15 @@ async def create_task(
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
+    
+    # Отправляем событие в Kafka
+    if db_task.assigneeId:
+        await kafka_producer.send_event('tasks-events', {
+            'event_type': 'task_created',
+            'task_id': str(db_task.id),
+            'task_title': db_task.title,
+            'assignee_id': str(db_task.assigneeId)
+        })
     
     return TaskResponse(
         id=str(db_task.id),
@@ -142,6 +161,15 @@ async def update_task(
     db.commit()
     db.refresh(task)
     
+    # Отправляем событие в Kafka при обновлении
+    if task.assigneeId:
+        await kafka_producer.send_event('tasks-events', {
+            'event_type': 'task_updated',
+            'task_id': str(task.id),
+            'task_title': task.title,
+            'assignee_id': str(task.assigneeId)
+        })
+    
     return TaskResponse(
         id=str(task.id),
         projectId=str(task.projectId),
@@ -225,6 +253,15 @@ async def add_task_comment(
     db.add(db_comment)
     db.commit()
     db.refresh(db_comment)
+    
+    # Отправляем событие в Kafka
+    if task.assigneeId:
+        await kafka_producer.send_event('tasks-events', {
+            'event_type': 'comment_added',
+            'task_id': str(task.id),
+            'task_title': task.title,
+            'task_assignee_id': str(task.assigneeId)
+        })
     
     return TaskCommentResponse(
         id=str(db_comment.id),
