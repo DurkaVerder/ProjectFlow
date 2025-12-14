@@ -20,7 +20,7 @@ app = FastAPI(title="Auth Service")
 security = HTTPBearer()
 
 
-# Authentication endpoints
+
 @app.post("/auth/register", response_model=UserResponse)
 def register(user: UserCreate, db: Session = Depends(get_db)):
     existing_user = auth.get_user_by_email(db, user.email)
@@ -115,6 +115,35 @@ def logout(
     auth.revoke_refresh_token(db, request.refresh_token)
     
     return {"message": "Successfully logged out"}
+
+
+@app.get("/auth/validate")
+def validate_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Validate access token and return user info"""
+    payload = auth.verify_token(credentials.credentials, token_type="access")
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid access token"
+        )
+    
+    user_id = payload.get("sub")
+    user = auth.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "name": user.name,
+        "role": user.role.value
+    }
 
 
 # User CRUD endpoints

@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL database for auth service
+  # PostgreSQL для auth
   postgres_auth:
     image: postgres:15
     container_name: postgres_auth
@@ -17,6 +17,46 @@ services:
       - projectflow_network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U auth_user -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL для projects
+  postgres_projects:
+    image: postgres:15
+    container_name: postgres_projects
+    environment:
+      POSTGRES_DB: projects_db
+      POSTGRES_USER: projects_user
+      POSTGRES_PASSWORD: projects_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_projects_data:/var/lib/postgresql/data
+    networks:
+      - projectflow_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U projects_user -d projects_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL для tasks
+  postgres_tasks:
+    image: postgres:15
+    container_name: postgres_tasks
+    environment:
+      POSTGRES_DB: tasks_db
+      POSTGRES_USER: tasks_user
+      POSTGRES_PASSWORD: tasks_password
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_tasks_data:/var/lib/postgresql/data
+    networks:
+      - projectflow_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tasks_user -d tasks_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -38,8 +78,48 @@ services:
       - projectflow_network
     restart: unless-stopped
 
+  # Projects service
+  projects:
+    build:
+      context: ./projects
+      dockerfile: Dockerfile
+    container_name: projects_service
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./projects/.env
+    depends_on:
+      postgres_projects:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    networks:
+      - projectflow_network
+    restart: unless-stopped
+
+  # Tasks service
+  tasks:
+    build:
+      context: ./tasks
+      dockerfile: Dockerfile
+    container_name: tasks_service
+    ports:
+      - "8002:8002"
+    env_file:
+      - ./tasks/.env
+    depends_on:
+      postgres_tasks:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    networks:
+      - projectflow_network
+    restart: unless-stopped
+
 volumes:
   postgres_auth_data:
+  postgres_projects_data:
+  postgres_tasks_data:
 
 networks:
   projectflow_network:
