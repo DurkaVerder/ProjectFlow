@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for auth service
+  postgres_auth:
+    image: postgres:15
+    container_name: postgres_auth
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - projectflow_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Auth service
+  auth:
+    build:
+      context: ./auth
+      dockerfile: Dockerfile
+    container_name: auth_service
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./auth/.env
+    depends_on:
+      postgres_auth:
+        condition: service_healthy
+    networks:
+      - projectflow_network
+    restart: unless-stopped
+
+volumes:
+  postgres_auth_data:
+
+networks:
+  projectflow_network:
+    driver: bridge
