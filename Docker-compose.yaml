@@ -61,6 +61,60 @@ services:
       timeout: 5s
       retries: 5
 
+  # PostgreSQL для notifications
+  postgres_notifications:
+    image: postgres:15
+    container_name: postgres_notifications
+    environment:
+      POSTGRES_DB: notifications_db
+      POSTGRES_USER: notifications_user
+      POSTGRES_PASSWORD: notifications_password
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_notifications_data:/var/lib/postgresql/data
+    networks:
+      - projectflow_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notifications_user -d notifications_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - projectflow_network
+
+  # Kafka
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - projectflow_network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+  
   # Auth service
   auth:
     build:
@@ -93,9 +147,11 @@ services:
         condition: service_healthy
       auth:
         condition: service_started
+      kafka:
+        condition: service_healthy
     networks:
       - projectflow_network
-    restart: unless-stopped
+    restart: on-failure:5
 
   # Tasks service
   tasks:
@@ -112,14 +168,38 @@ services:
         condition: service_healthy
       auth:
         condition: service_started
+      kafka:
+        condition: service_healthy
     networks:
       - projectflow_network
-    restart: unless-stopped
+    restart: on-failure:5
+
+  # Notifications service
+  notifications:
+    build:
+      context: ./notifications
+      dockerfile: Dockerfile
+    container_name: notifications_service
+    ports:
+      - "8003:8003"
+    env_file:
+      - ./notifications/.env
+    depends_on:
+      postgres_notifications:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    networks:
+      - projectflow_network
+    restart: on-failure:5
 
 volumes:
   postgres_auth_data:
   postgres_projects_data:
   postgres_tasks_data:
+  postgres_notifications_data:
 
 networks:
   projectflow_network:
