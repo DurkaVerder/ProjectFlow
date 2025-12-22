@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from typing import List
@@ -16,6 +17,15 @@ import auth
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Auth Service")
+
+# CORS настройки
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 security = HTTPBearer()
 
@@ -147,6 +157,20 @@ def validate_token(
 
 
 # User CRUD endpoints
+@app.get("/auth/users/search", response_model=List[UserResponse])
+def search_users(name: str = "", db: Session = Depends(get_db)):
+    """Search users by name"""
+    users = db.query(User).filter(User.name.ilike(f"%{name}%")).limit(20).all()
+    
+    return [UserResponse(
+        id=str(user.id),
+        name=user.name,
+        email=user.email,
+        role=user.role,
+        createdAt=user.createdAt
+    ) for user in users]
+
+
 @app.get("/auth/users/{user_id}", response_model=UserResponse)
 def get_user(user_id: str, db: Session = Depends(get_db)):
 

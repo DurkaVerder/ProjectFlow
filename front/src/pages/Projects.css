@@ -1,0 +1,18 @@
+.page-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 30px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.page-header h1 {
+  font-size: 32px;
+  color: #333;
+  margin: 0;
+}
