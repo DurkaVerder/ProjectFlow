@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { projectsService } from '../api/projectsService';
-import { analyticsService } from '../api/analyticsService';
 import { notificationsService } from '../api/notificationsService';
 import { useAuth } from '../context/AuthContext';
 import { Navbar } from '../components/Navbar';
@@ -9,8 +8,6 @@ import './Dashboard.css';
 
 export const Dashboard = () => {
   const [projects, setProjects] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [taskStats, setTaskStats] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -24,16 +21,12 @@ export const Dashboard = () => {
 
   const loadDashboardData = async () => {
     try {
-      const [projectsData, projectStatsData, taskStatsData, notificationsData] = await Promise.all([
+      const [projectsData, notificationsData] = await Promise.all([
         projectsService.getProjects(),
-        analyticsService.getProjectStats(),
-        analyticsService.getTaskStats(),
         user?.id ? notificationsService.getUserNotifications(user.id) : []
       ]);
 
       setProjects(projectsData);
-      setStats(projectStatsData);
-      setTaskStats(taskStatsData);
       setNotifications(notificationsData.slice(0, 5));
     } catch (error) {
       console.error('Failed to load dashboard:', error);
@@ -86,30 +79,7 @@ export const Dashboard = () => {
           </button>
         </div>
 
-        <div className="stats-grid">
-          <div className="stat-card">
-            <h3>📁 Проекты</h3>
-            <div className="stat-value">{stats?.totalProjects || 0}</div>
-            <div className="stat-label">Всего проектов</div>
-            <div className="stat-secondary">+{stats?.projectsThisWeek || 0} на этой неделе</div>
-          </div>
-          <div className="stat-card">
-            <h3>✅ Задачи</h3>
-            <div className="stat-value">{taskStats?.totalTasks || 0}</div>
-            <div className="stat-label">Всего задач</div>
-            <div className="stat-secondary">+{taskStats?.tasksThisWeek || 0} на этой неделе</div>
-          </div>
-          <div className="stat-card">
-            <h3>👥 Участники</h3>
-            <div className="stat-value">{stats?.totalMembers || 0}</div>
-            <div className="stat-label">Всего участников</div>
-          </div>
-          <div className="stat-card">
-            <h3>💬 Комментарии</h3>
-            <div className="stat-value">{taskStats?.commentsThisWeek || 0}</div>
-            <div className="stat-label">За эту неделю</div>
-          </div>
-        </div>
+        {/* Статистика убрана вместе с аналитикой */}
 
         <div className="dashboard-content">
           <div className="projects-section">

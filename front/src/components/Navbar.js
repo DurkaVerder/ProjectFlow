@@ -22,7 +22,6 @@ export const Navbar = () => {
           <Link to="/dashboard" className="navbar-link">Панель</Link>
           <Link to="/projects" className="navbar-link">Проекты</Link>
           <Link to="/tasks" className="navbar-link">Задачи</Link>
-          <Link to="/analytics" className="navbar-link">Аналитика</Link>
           <Link to="/integrations" className="navbar-link">Интеграции</Link>
           <Link to="/notifications" className="navbar-link">
             🔔 Уведомления

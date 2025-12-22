@@ -114,37 +114,6 @@ async def get_integration(
     
     return integration
 
-@app.put("/integrations/{integration_id}", response_model=IntegrationResponse)
-async def update_integration(
-    integration_id: str,
-    integration_update: IntegrationUpdate,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Обновить интеграцию"""
-    try:
-        int_uuid = uuid.UUID(integration_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid integration ID format")
-    
-    integration = db.query(Integration).filter(
-        Integration.id == int_uuid,
-        Integration.userId == uuid.UUID(current_user["id"])
-    ).first()
-    
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
-    
-    if integration_update.isActive is not None:
-        integration.isActive = integration_update.isActive
-    if integration_update.config is not None:
-        integration.config = integration_update.config
-    
-    db.commit()
-    db.refresh(integration)
-    
-    return integration
-
 @app.delete("/integrations/{integration_id}")
 async def delete_integration(
     integration_id: str,
@@ -170,42 +139,7 @@ async def delete_integration(
     
     return {"message": "Integration deleted successfully"}
 
-# ========== Webhook logs ==========
 
-@app.get("/integrations/{integration_id}/logs", response_model=List[WebhookLogResponse])
-async def get_integration_logs(
-    integration_id: str,
-    limit: int = 50,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Получить логи webhook интеграции"""
-    try:
-        int_uuid = uuid.UUID(integration_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid integration ID format")
-    
-    logs = db.query(WebhookLog).filter(
-        WebhookLog.integrationId == int_uuid
-    ).order_by(WebhookLog.createdAt.desc()).limit(limit).all()
-    
-    return logs
-
-# ========== Email интеграция ==========
-
-@app.post("/integrations/email/send")
-async def send_email(
-    email_data: EmailNotification,
-    current_user: dict = Depends(get_current_user)
-):
-    """Отправить email уведомление"""
-    try:
-        await send_email_notification(email_data.to, email_data.subject, email_data.body)
-        return {"message": "Email sent successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
-
-# ========== Telegram интеграция ==========
 
 @app.post("/integrations/telegram/connect", response_model=TelegramConnectionResponse)
 async def connect_telegram(
@@ -216,7 +150,7 @@ async def connect_telegram(
         # TODO: Замените YOUR_BOT_USERNAME на реальный username вашего бота
         result = generate_telegram_deep_link(
             user_id=current_user["id"],
-            bot_username="YOUR_BOT_USERNAME"
+            bot_username="mos_polytech_course_work_bot"
         )
         return result
     except Exception as e:
@@ -277,83 +211,3 @@ async def send_telegram(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to send telegram message: {str(e)}")
 
-# ========== GitHub интеграция ==========
-
-@app.post("/integrations/github/repositories", response_model=GitHubRepoResponse)
-async def add_github_repository(
-    repo: GitHubRepoCreate,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Добавить GitHub репозиторий к проекту"""
-    db_repo = GitHubRepository(
-        projectId=repo.projectId,
-        repositoryUrl=repo.repositoryUrl,
-        accessToken=repo.accessToken,
-        syncEnabled=repo.syncEnabled
-    )
-    db.add(db_repo)
-    db.commit()
-    db.refresh(db_repo)
-    
-    return db_repo
-
-@app.get("/integrations/github/repositories/{project_id}", response_model=List[GitHubRepoResponse])
-async def get_github_repositories(
-    project_id: str,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Получить GitHub репозитории проекта"""
-    try:
-        proj_uuid = uuid.UUID(project_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid project ID format")
-    
-    repos = db.query(GitHubRepository).filter(
-        GitHubRepository.projectId == proj_uuid
-    ).all()
-    
-    return repos
-
-@app.post("/integrations/github/issues")
-async def create_issue(
-    issue_data: GitHubIssueCreate,
-    current_user: dict = Depends(get_current_user)
-):
-    """Создать issue в GitHub"""
-    try:
-        # Парсим URL репозитория
-        parts = issue_data.repositoryUrl.replace("https://github.com/", "").split("/")
-        if len(parts) < 2:
-            raise HTTPException(status_code=400, detail="Invalid repository URL")
-        
-        owner, repo = parts[0], parts[1]
-        
-        issue = await create_github_issue(
-            owner, repo,
-            issue_data.title,
-            issue_data.body,
-            issue_data.accessToken
-        )
-        
-        return issue
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create GitHub issue: {str(e)}")
-
-@app.get("/integrations/github/issues/{repo_owner}/{repo_name}")
-async def get_issues(
-    repo_owner: str,
-    repo_name: str,
-    access_token: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Получить issues из GitHub"""
-    try:
-        issues = await get_github_issues(repo_owner, repo_name, access_token)
-        return issues
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get GitHub issues: {str(e)}")
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8005)

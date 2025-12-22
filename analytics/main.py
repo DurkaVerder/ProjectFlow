@@ -114,40 +114,6 @@ async def get_task_stats(
         commentsThisWeek=comments_this_week
     )
 
-@app.get("/analytics/user/{user_id}/activity", response_model=UserActivityStats)
-async def get_user_activity(
-    user_id: str,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Получить активность конкретного пользователя"""
-    try:
-        user_uuid = uuid.UUID(user_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid user ID format")
-    
-    projects_created = db.query(ProjectEvent).filter(
-        ProjectEvent.eventType == 'project_created',
-        ProjectEvent.ownerId == user_uuid
-    ).count()
-    
-    tasks_assigned = db.query(TaskEvent).filter(
-        TaskEvent.eventType == 'task_created',
-        TaskEvent.assigneeId == user_uuid
-    ).count()
-    
-    # Для комментариев используем userId из ProjectEvent (когда member_added)
-    # Это приблизительная оценка активности
-    comments_added = db.query(TaskEvent).filter(
-        TaskEvent.eventType == 'comment_added'
-    ).count()
-    
-    return UserActivityStats(
-        userId=user_uuid,
-        projectsCreated=projects_created,
-        tasksAssigned=tasks_assigned,
-        commentsAdded=comments_added
-    )
 
 @app.get("/analytics/projects/events", response_model=List[ProjectEventResponse])
 async def get_project_events(

@@ -9,7 +9,6 @@ import { Projects } from './pages/Projects';
 import { ProjectDetail } from './pages/ProjectDetail';
 import { Tasks } from './pages/Tasks';
 import { TaskDetail } from './pages/TaskDetail';
-import { Analytics } from './pages/Analytics';
 import { Integrations } from './pages/Integrations';
 import { Notifications } from './pages/Notifications';
 import './App.css';
@@ -59,14 +58,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <TaskDetail />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/analytics"
-              element={
-                <ProtectedRoute>
-                  <Analytics />
                 </ProtectedRoute>
               }
             />

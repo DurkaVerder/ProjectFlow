@@ -8,26 +8,28 @@ pending_connections = {}
 async def send_telegram_notification(chat_id: str, message: str):
     """Отправка уведомления в Telegram"""
     if not settings.TELEGRAM_BOT_TOKEN:
-        print("Telegram bot token not configured, skipping telegram notification")
+        print("[Telegram] Bot token not configured, skipping telegram notification", flush=True)
         return
     
-    url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
+    url = f"https://api.telegram.org/bot8508817832:AAEg2G7SeklAHNk0JVdNfctqR-yJtLoSCbw/sendMessage"
     
     payload = {
         "chat_id": chat_id,
-        "text": message,
-        "parse_mode": "Markdown"
+        "text": message
     }
-    
+
+    print(f"[Telegram] Sending message to chat_id={chat_id} with payload: {payload}", flush=True)
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(url, json=payload)
+            print(f"[Telegram] Telegram API response status: {response.status_code}", flush=True)
+            print(f"[Telegram] Telegram API response body: {response.text}", flush=True)
             if response.status_code == 200:
-                print(f"Telegram message sent successfully to {chat_id}")
+                print(f"[Telegram] Message sent successfully to {chat_id}", flush=True)
             else:
                 raise Exception(f"Telegram API error: {response.text}")
     except Exception as e:
-        print(f"Failed to send telegram message: {e}")
+        print(f"[Telegram] Failed to send telegram message: {e}", flush=True)
         raise
 
 def generate_telegram_deep_link(user_id: str, bot_username: str = None):
@@ -57,13 +59,37 @@ async def handle_telegram_start(start_param: str, chat_id: str):
         user_info = pending_connections[start_param]
         user_info["connected"] = True
         user_info["chat_id"] = str(chat_id)
-        
+
+        # --- ДОБАВЛЕНО: сохраняем chat_id в Integration.config ---
+        from database import SessionLocal
+        from models import Integration
+        import json
+        db = SessionLocal()
+        try:
+           
+            integrations = db.query(Integration).filter(
+                Integration.userId == user_info["user_id"],
+                Integration.integrationType == 'telegram'
+            ).all()
+            if integrations:
+                for integration in integrations:
+                    config = integration.config or {}
+                    config["chat_id"] = str(chat_id)
+                    integration.config = config
+                db.commit()
+                print(f"[Telegram] chat_id {chat_id} saved to {len(integrations)} Integration(s) for user_id {user_info['user_id']}", flush=True)
+            else:
+                print(f"[Telegram] No Integration found for user_id {user_info['user_id']} to save chat_id", flush=True)
+        except Exception as e:
+            print(f"[Telegram] Error saving chat_id to Integration: {e}", flush=True)
+        finally:
+            db.close()
+        # ---
+
         # Отправляем приветственное сообщение
         welcome_message = "✅ *Успешно подключено!*\n\nТеперь вы будете получать уведомления из ProjectFlow."
         await send_telegram_notification(str(chat_id), welcome_message)
-        
         return user_info
-    
     return None
 
 def get_connection_status(connection_token: str):

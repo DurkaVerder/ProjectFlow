@@ -273,6 +273,8 @@ services:
         condition: service_healthy
       auth:
         condition: service_started
+      notifications:
+        condition: service_started
     networks:
       - projectflow_network
     restart: on-failure:5

@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     
     # Telegram settings
-    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_BOT_TOKEN: str = "8508817832:AAEg2G7SeklAHNk0JVdNfctqR-yJtLoSCbw"
     
     # GitHub settings
     GITHUB_API_URL: str = "https://api.github.com"
