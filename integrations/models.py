@@ -10,9 +10,9 @@ class Integration(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     userId = Column(UUID(as_uuid=True), nullable=False)
     projectId = Column(UUID(as_uuid=True))
-    integrationType = Column(String(50), nullable=False)  # email, telegram, github
+    integrationType = Column(String(50), nullable=False)  
     isActive = Column(Boolean, default=True)
-    config = Column(JSON)  # Конфигурация интеграции
+    config = Column(JSON)  
     createdAt = Column(DateTime, default=datetime.utcnow)
     updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

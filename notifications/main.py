@@ -54,13 +54,12 @@ async def get_user_notifications(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """Получить все уведомления пользователя"""
+
     try:
         user_uuid = uuid.UUID(user_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid user ID format")
     
-    # Проверяем, что пользователь запрашивает свои уведомления
     if str(current_user["id"]) != user_id:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -76,7 +75,6 @@ async def mark_notification_as_read(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """Отметить уведомление как прочитанное"""
     try:
         notif_uuid = uuid.UUID(notification_id)
     except ValueError:
@@ -89,7 +87,6 @@ async def mark_notification_as_read(
     if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
     
-    # Проверяем, что уведомление принадлежит текущему пользователю
     if str(notification.userId) != str(current_user["id"]):
         raise HTTPException(status_code=403, detail="Access denied")
     

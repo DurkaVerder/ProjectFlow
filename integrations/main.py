@@ -46,7 +46,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Integrations Service", lifespan=lifespan)
 
-# CORS настройки
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -59,85 +58,7 @@ app.add_middleware(
 def read_root():
     return {"message": "Integrations Service"}
 
-# ========== CRUD для интеграций ==========
 
-@app.post("/integrations", response_model=IntegrationResponse)
-async def create_integration(
-    integration: IntegrationCreate,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Создать новую интеграцию"""
-    db_integration = Integration(
-        userId=uuid.UUID(current_user["id"]),
-        projectId=integration.projectId,
-        integrationType=integration.integrationType,
-        config=integration.config
-    )
-    db.add(db_integration)
-    db.commit()
-    db.refresh(db_integration)
-    
-    return db_integration
-
-@app.get("/integrations", response_model=List[IntegrationResponse])
-async def get_integrations(
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Получить все интеграции пользователя"""
-    integrations = db.query(Integration).filter(
-        Integration.userId == uuid.UUID(current_user["id"])
-    ).all()
-    
-    return integrations
-
-@app.get("/integrations/{integration_id}", response_model=IntegrationResponse)
-async def get_integration(
-    integration_id: str,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Получить интеграцию по ID"""
-    try:
-        int_uuid = uuid.UUID(integration_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid integration ID format")
-    
-    integration = db.query(Integration).filter(
-        Integration.id == int_uuid,
-        Integration.userId == uuid.UUID(current_user["id"])
-    ).first()
-    
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
-    
-    return integration
-
-@app.delete("/integrations/{integration_id}")
-async def delete_integration(
-    integration_id: str,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Удалить интеграцию"""
-    try:
-        int_uuid = uuid.UUID(integration_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid integration ID format")
-    
-    integration = db.query(Integration).filter(
-        Integration.id == int_uuid,
-        Integration.userId == uuid.UUID(current_user["id"])
-    ).first()
-    
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
-    
-    db.delete(integration)
-    db.commit()
-    
-    return {"message": "Integration deleted successfully"}
 
 
 
@@ -147,7 +68,6 @@ async def connect_telegram(
 ):
     """Получить deep link для подключения Telegram бота"""
     try:
-        # TODO: Замените YOUR_BOT_USERNAME на реальный username вашего бота
         result = generate_telegram_deep_link(
             user_id=current_user["id"],
             bot_username="mos_polytech_course_work_bot"
@@ -161,7 +81,7 @@ async def check_telegram_connection(
     connection_token: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Проверить статус подключения Telegram"""
+  
     status = get_connection_status(connection_token)
     
     if not status:
@@ -177,7 +97,7 @@ async def check_telegram_connection(
 
 @app.post("/integrations/telegram/webhook")
 async def telegram_webhook(webhook_data: TelegramWebhook):
-    """Webhook для получения обновлений от Telegram бота"""
+
     try:
         message = webhook_data.message
         if not message:
@@ -186,7 +106,7 @@ async def telegram_webhook(webhook_data: TelegramWebhook):
         text = message.get("text", "")
         chat_id = message.get("chat", {}).get("id")
         
-        # Обрабатываем команду /start с параметром
+    
         if text.startswith("/start "):
             start_param = text.split(" ")[1]
             result = await handle_telegram_start(start_param, chat_id)
@@ -204,7 +124,7 @@ async def send_telegram(
     telegram_data: TelegramNotification,
     current_user: dict = Depends(get_current_user)
 ):
-    """Отправить Telegram уведомление"""
+
     try:
         await send_telegram_notification(telegram_data.chatId, telegram_data.message)
         return {"message": "Telegram message sent successfully"}

@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any
 
 class IntegrationCreate(BaseModel):
     projectId: Optional[UUID] = None
-    integrationType: str  # email, telegram, github
+    integrationType: str  
     config: Dict[str, Any]
 
 class IntegrationUpdate(BaseModel):

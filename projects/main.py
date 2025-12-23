@@ -312,7 +312,6 @@ async def remove_project_member(
     db.delete(member)
     db.commit()
     
-    # Отправляем событие в Kafka
     await kafka_producer.send_event('projects-events', {
         'event_type': 'member_removed',
         'project_id': project_id,

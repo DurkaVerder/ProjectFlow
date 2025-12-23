@@ -42,7 +42,5 @@ async def sync_github_issues_to_tasks(repo_owner: str, repo_name: str, access_to
     """Синхронизация GitHub issues с задачами проекта"""
     issues = await get_github_issues(repo_owner, repo_name, access_token)
     
-    # Здесь можно добавить логику создания задач из issues
-    # Для этого нужно вызвать tasks service API
     
     return issues
