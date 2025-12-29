@@ -83,14 +83,14 @@ async def create_task(
 
 @app.get("/tasks", response_model=List[TaskResponse])
 async def get_tasks(
-    project: Optional[str] = Query(None),
+    project: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     query = db.query(Task)
     
     if project:
-        query = query.filter(Task.projectId == uuid.UUID(project))
+        query = query.filter(Task.projectId == project)
     
     tasks = query.all()
     
@@ -114,11 +114,11 @@ async def get_tasks(
 
 @app.get("/tasks/{task_id}", response_model=TaskResponse)
 async def get_task(
-    task_id: str,
+    task_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    task = db.query(Task).filter(Task.id == uuid.UUID(task_id)).first()
+    task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -142,12 +142,12 @@ async def get_task(
 
 @app.put("/tasks/{task_id}", response_model=TaskResponse)
 async def update_task(
-    task_id: str,
+    task_id: uuid.UUID,
     task_update: TaskUpdate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    task = db.query(Task).filter(Task.id == uuid.UUID(task_id)).first()
+    task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -198,11 +198,11 @@ async def update_task(
 
 @app.delete("/tasks/{task_id}")
 async def delete_task(
-    task_id: str,
+    task_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    task = db.query(Task).filter(Task.id == uuid.UUID(task_id)).first()
+    task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -217,18 +217,18 @@ async def delete_task(
 
 @app.get("/tasks/{task_id}/comments", response_model=List[TaskCommentResponse])
 async def get_task_comments(
-    task_id: str,
+    task_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    task = db.query(Task).filter(Task.id == uuid.UUID(task_id)).first()
+    task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
         )
     
-    comments = db.query(TaskComment).filter(TaskComment.taskId == uuid.UUID(task_id)).all()
+    comments = db.query(TaskComment).filter(TaskComment.taskId == task_id).all()
     
     return [
         TaskCommentResponse(
@@ -244,12 +244,12 @@ async def get_task_comments(
 
 @app.post("/tasks/{task_id}/comments", response_model=TaskCommentResponse)
 async def add_task_comment(
-    task_id: str,
+    task_id: uuid.UUID,
     comment: TaskCommentCreate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    task = db.query(Task).filter(Task.id == uuid.UUID(task_id)).first()
+    task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

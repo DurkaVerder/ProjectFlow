@@ -94,11 +94,12 @@ async def get_projects(
 
 @app.get("/projects/{project_id}", response_model=ProjectResponse)
 async def get_project(
-    project_id: str,
+    project_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    project = db.query(Project).filter(Project.id == uuid.UUID(project_id)).first()
+
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -117,12 +118,13 @@ async def get_project(
 
 @app.put("/projects/{project_id}", response_model=ProjectResponse)
 async def update_project(
-    project_id: str,
+    project_id: uuid.UUID,
     project_update: ProjectUpdate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    project = db.query(Project).filter(Project.id == uuid.UUID(project_id)).first()
+
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -157,11 +159,11 @@ async def update_project(
 
 @app.delete("/projects/{project_id}")
 async def delete_project(
-    project_id: str,
+    project_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    project = db.query(Project).filter(Project.id == uuid.UUID(project_id)).first()
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -182,12 +184,12 @@ async def delete_project(
 
 @app.post("/projects/{project_id}/members", response_model=ProjectMemberResponse)
 async def add_project_member(
-    project_id: str,
+    project_id: uuid.UUID,
     member: ProjectMemberAdd,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    project = db.query(Project).filter(Project.id == uuid.UUID(project_id)).first()
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -201,7 +203,7 @@ async def add_project_member(
         )
     
     existing_member = db.query(ProjectMember).filter(
-        ProjectMember.projectId == uuid.UUID(project_id),
+        ProjectMember.projectId == project_id,
         ProjectMember.userId == uuid.UUID(member.userId)
     ).first()
     
@@ -237,18 +239,18 @@ async def add_project_member(
 
 @app.get("/projects/{project_id}/members", response_model=List[ProjectMemberResponse])
 async def get_project_members(
-    project_id: str,
+    project_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    project = db.query(Project).filter(Project.id == uuid.UUID(project_id)).first()
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
     
-    members = db.query(ProjectMember).filter(ProjectMember.projectId == uuid.UUID(project_id)).all()
+    members = db.query(ProjectMember).filter(ProjectMember.projectId == project_id).all()
     
     # Fetch user names from auth service
     result = []
